@@ -6,6 +6,15 @@ This is a process information exporter for promehteus.
 
 This app aggregates process information from `/proc/_pid_/stat` and `/proc/_pid_/io`. And export informations.
 
+## Mods in this github repository ( https://github.com/kedazo/process_exporter )
+
+Patch by: David Kedves <kedazo@severalnines.com>
+
+- Default 'filter' option to only include 'process_exporter'
+  (as it can overload the prometheus with lots of unwanted data)
+- In URL metrics one can now pass a custom filter
+  http://localhost:9011/metrics?filter="mysql"
+
 ## Build
 
     GOOS=linux GOARCH=amd64 go build -v process_exporter.go

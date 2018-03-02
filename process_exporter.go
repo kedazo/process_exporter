@@ -13,6 +13,7 @@ import (
 	"syscall"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/log"
 	"github.com/prometheus/procfs"
 )
@@ -41,7 +42,7 @@ var version string
 var (
 	addr       = flag.String("listen-address", ":9011", "The address to listen on for HTTP requests.")
 	userOpt    = flag.String("user", "", "User")
-	filter     = flag.String("filter", "", "Commandline filter")
+	filter     = flag.String("filter", "process_exporter", "Commandline filter")
 	procfsPath = flag.String("procfs", procfs.DefaultMountPoint, "procfs path")
 	versionFlg = flag.Bool("version", false, "Show version number")
 )
@@ -410,6 +411,49 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	return
 }
 
+func handler(w http.ResponseWriter, r *http.Request) {
+	filter := r.URL.Query()["filter"]
+
+    var filterRegexp string = "process_exporter"
+    if filter != nil && len(filter) > 0 {
+        filterRegexp = filter[0]
+    }
+	log.Infof("filter query:", filterRegexp)
+    // DebugLn
+
+	exporter, err := NewExporter(userOpt, &filterRegexp, *procfsPath)
+	if err != nil {
+		log.Warnln("Couldn't create", err)
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(fmt.Sprintf("Couldn't create %s", err)))
+		return
+	}
+
+	registry := prometheus.NewRegistry()
+	err = registry.Register(exporter)
+	if err != nil {
+		log.Errorln("Couldn't register collector:", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(fmt.Sprintf("Couldn't register collector: %s", err)))
+		return
+	}
+
+	gatherers := prometheus.Gatherers{
+		prometheus.DefaultGatherer,
+		registry,
+	}
+	// Delegate http serving to Prometheus client library, which will call collector.Collect.
+	h := promhttp.InstrumentMetricHandler(
+		registry,
+		promhttp.HandlerFor(gatherers,
+			promhttp.HandlerOpts{
+				ErrorLog:      log.NewErrorLogger(),
+				ErrorHandling: promhttp.ContinueOnError,
+			}),
+	)
+	h.ServeHTTP(w, r)
+}
+
 func main() {
 	flag.Parse()
 
@@ -419,8 +463,8 @@ func main() {
 		os.Exit(0)
 	}
 
-	exporter, err := NewExporter(userOpt, filter, *procfsPath)
-	if err != nil {
+    exporter, err := NewExporter(userOpt, filter, *procfsPath)
+    if err != nil {
 		log.Fatal(err)
 	}
 	prometheus.MustRegister(exporter)
@@ -428,6 +472,17 @@ func main() {
 	log.Infof("Listen: %s, Pid: %d", *addr, os.Getpid())
 
 	// Expose the registered metrics via HTTP.
-	http.Handle("/metrics", prometheus.Handler())
+	http.HandleFunc("/metrics", handler)
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`<html>
+			<head><title>Process Exporter</title></head>
+			<body>
+			<h1>Process Exporter</h1>
+			<p><a href="/metrics">Metrics</a></p>
+			</body>
+			</html>`))
+	})
+
 	log.Fatal(http.ListenAndServe(*addr, nil))
 }
+
