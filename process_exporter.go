@@ -452,6 +452,11 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			}),
 	)
 	h.ServeHTTP(w, r)
+
+    h = nil
+    gatherers = nil
+    registry = nil
+    exporter = nil
 }
 
 func main() {
