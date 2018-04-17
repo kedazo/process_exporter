@@ -77,6 +77,7 @@ type Exporter struct {
 	cutimeGauge                *prometheus.GaugeVec
 	cstimeGauge                *prometheus.GaugeVec
 	niceGauge                  *prometheus.GaugeVec
+	priorityGauge              *prometheus.GaugeVec
 	numThreadsGauge            *prometheus.GaugeVec
 	startTimeGauge             *prometheus.GaugeVec
 	vsizeGauge                 *prometheus.GaugeVec
@@ -249,6 +250,13 @@ func NewExporter(username *string, filter *string, procfsPath string) (*Exporter
 			},
 			labelNames,
 		),
+		priorityGauge: prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "procstat_priority",
+				Help: "The priority value, a value in the range 19 (low priority) to -20 (high priority)",
+			},
+			labelNames,
+		),
 		numThreadsGauge: prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
 				Name: "procstat_numthreads",
@@ -299,6 +307,7 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	e.cutimeGauge.Describe(ch)
 	e.cstimeGauge.Describe(ch)
 	e.niceGauge.Describe(ch)
+	e.priorityGauge.Describe(ch)
 	e.numThreadsGauge.Describe(ch)
 	e.startTimeGauge.Describe(ch)
 	e.vsizeGauge.Describe(ch)
@@ -370,6 +379,7 @@ func (e *Exporter) collect(ch chan<- prometheus.Metric) error {
 		e.cutimeGauge.WithLabelValues(labels...).Set(float64(stat.CUTime))
 		e.cstimeGauge.WithLabelValues(labels...).Set(float64(stat.CSTime))
 		e.niceGauge.WithLabelValues(labels...).Set(float64(stat.Nice))
+		e.priorityGauge.WithLabelValues(labels...).Set(float64(stat.Priority))
 		e.numThreadsGauge.WithLabelValues(labels...).Set(float64(stat.NumThreads))
 		e.startTimeGauge.WithLabelValues(labels...).Set(e.bootTime + float64(stat.Starttime)/userHZ)
 		e.vsizeGauge.WithLabelValues(labels...).Set(float64(stat.VSize))
@@ -392,6 +402,7 @@ func (e *Exporter) collect(ch chan<- prometheus.Metric) error {
 	e.cutimeGauge.Collect(ch)
 	e.cstimeGauge.Collect(ch)
 	e.niceGauge.Collect(ch)
+	e.priorityGauge.Collect(ch)
 	e.numThreadsGauge.Collect(ch)
 	e.startTimeGauge.Collect(ch)
 	e.vsizeGauge.Collect(ch)
