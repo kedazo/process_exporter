@@ -14,6 +14,8 @@ Patch by: David Kedves <kedazo@severalnines.com>
   (as it can overload the prometheus with lots of unwanted data)
 - In URL metrics one can now pass a custom filter
   http://localhost:9011/metrics?filter="mysql"
+- Added 'uid' and 'username' labels
+- Also sending 'priority' information for the processes
 
 ## Build
 
