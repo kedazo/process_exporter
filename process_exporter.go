@@ -56,7 +56,6 @@ type Exporter struct {
 	filterRegex *regexp.Regexp
 
 	bootTime float64
-	pagesize int
 	fs       procfs.FS
 
 	scrapeFailures prometheus.Counter
@@ -123,14 +122,13 @@ func NewExporter(username *string, filter *string, procfsPath string) (*Exporter
 		return nil, err
 	}
 
-	labelNames := []string{"pid", "comm", "cmdline", "uid", "username"}
+	labelNames := []string{"pid", "comm", "state", "cmdline", "uid", "username"}
 
 	return &Exporter{
 		uid:         uid,
 		filterRegex: filterRegex,
 		fs:          fs,
 		bootTime:    float64(procStat.BootTime),
-		pagesize:    os.Getpagesize(),
 		scrapeFailures: prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: namespace,
 			Name:      "exporter_scrape_failures_total",
@@ -281,7 +279,7 @@ func NewExporter(username *string, filter *string, procfsPath string) (*Exporter
 		rssGauge: prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
 				Name: "procstat_rss",
-				Help: "Resident set size in bytes",
+				Help: "Resident memory size in bytes",
 			},
 			labelNames,
 		),
@@ -365,7 +363,7 @@ func (e *Exporter) collect(ch chan<- prometheus.Metric) error {
 		}
 		sCmdline := strings.Join(cmdline, " ")
 
-		labels := []string{strconv.Itoa(proc.PID), stat.Comm, sCmdline, strconv.Itoa(int(uid)),username}
+		labels := []string{strconv.Itoa(proc.PID), stat.Comm, stat.State, sCmdline, strconv.Itoa(int(uid)),username}
 
 		io, err := proc.NewIO()
 		if err != nil {
@@ -394,8 +392,8 @@ func (e *Exporter) collect(ch chan<- prometheus.Metric) error {
 		e.priorityGauge.WithLabelValues(labels...).Set(float64(stat.Priority))
 		e.numThreadsGauge.WithLabelValues(labels...).Set(float64(stat.NumThreads))
 		e.startTimeGauge.WithLabelValues(labels...).Set(e.bootTime + float64(stat.Starttime)/userHZ)
-		e.vsizeGauge.WithLabelValues(labels...).Set(float64(stat.VSize))
-		e.rssGauge.WithLabelValues(labels...).Set(float64(stat.RSS * e.pagesize))
+		e.vsizeGauge.WithLabelValues(labels...).Set(float64(stat.VirtualMemory()))
+		e.rssGauge.WithLabelValues(labels...).Set(float64(stat.ResidentMemory()))
 	}
 
 	e.ioRCharGauge.Collect(ch)
