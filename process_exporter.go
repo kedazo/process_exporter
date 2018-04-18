@@ -123,7 +123,7 @@ func NewExporter(username *string, filter *string, procfsPath string) (*Exporter
 		return nil, err
 	}
 
-	labelNames := []string{"pid", "comm", "cmdline", "uid"}
+	labelNames := []string{"pid", "comm", "cmdline", "uid", "username"}
 
 	return &Exporter{
 		uid:         uid,
@@ -320,6 +320,8 @@ func (e *Exporter) collect(ch chan<- prometheus.Metric) error {
 		return err
 	}
 
+	var usernames map[uint32]string
+	usernames = make(map[uint32]string)
 	for _, proc := range procs {
         fi, err := os.Stat(e.fs.Path(fmt.Sprintf("/%d/stat", proc.PID)))
         if err != nil {
@@ -331,6 +333,18 @@ func (e *Exporter) collect(ch chan<- prometheus.Metric) error {
         if e.uid != nil && *e.uid != uid {
             continue
         }
+
+		// check username in 'cache' otherwise lets query it up
+		username := usernames[uid]
+		if username == "" {
+			user, _ := user.LookupId(strconv.Itoa(int(uid)))
+			if user != nil {
+				usernames[uid] = user.Username
+				username = user.Username
+			} else {
+				username = string("")
+			}
+		}
 
 		stat, err := proc.NewStat()
 		if err != nil {
@@ -351,7 +365,7 @@ func (e *Exporter) collect(ch chan<- prometheus.Metric) error {
 		}
 		sCmdline := strings.Join(cmdline, " ")
 
-		labels := []string{strconv.Itoa(proc.PID), stat.Comm, sCmdline, strconv.Itoa(int(uid))}
+		labels := []string{strconv.Itoa(proc.PID), stat.Comm, sCmdline, strconv.Itoa(int(uid)),username}
 
 		io, err := proc.NewIO()
 		if err != nil {
