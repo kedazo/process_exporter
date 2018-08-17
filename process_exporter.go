@@ -367,7 +367,7 @@ func (e *Exporter) collect(ch chan<- prometheus.Metric) error {
 
 		io, err := proc.NewIO()
 		if err != nil {
-			log.Info(err)
+			//log.Info(err)
 		} else {
 			e.ioRCharGauge.WithLabelValues(labels...).Set(float64(io.RChar))
 			e.ioWCharGauge.WithLabelValues(labels...).Set(float64(io.WChar))
@@ -425,7 +425,8 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	e.mutex.Lock() // To protect metrics from concurrent collects.
 	defer e.mutex.Unlock()
 	if err := e.collect(ch); err != nil {
-		log.Infof("Error getting process info: %s", err)
+        // It fills the logfile with Permission denied errors too fast
+		//log.Infof("Error getting process info: %s", err)
 		e.scrapeFailures.Inc()
 		e.scrapeFailures.Collect(ch)
 	}
@@ -439,7 +440,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
     if filter != nil && len(filter) > 0 {
         filterRegexp = filter[0]
     }
-	log.Infof("filter query:", filterRegexp)
+	// log.Infof("filter query:", filterRegexp)
     // DebugLn
 
 	exporter, err := NewExporter(userOpt, &filterRegexp, *procfsPath)
