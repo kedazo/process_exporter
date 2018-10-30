@@ -104,7 +104,6 @@ func NewExporter(username *string, filter *string, procfsPath string) (*Exporter
 
 	var filterRegex *regexp.Regexp = nil
 	if filter != nil {
-		log.Infof("Filter: %s", *filter)
 		re, err := regexp.Compile(*filter)
 		if err != nil {
 			log.Fatal(err)
@@ -323,7 +322,6 @@ func (e *Exporter) collect(ch chan<- prometheus.Metric) error {
 	for _, proc := range procs {
         fi, err := os.Stat(e.fs.Path(fmt.Sprintf("/%d/stat", proc.PID)))
         if err != nil {
-            log.Error(err)
             continue
         }
 
