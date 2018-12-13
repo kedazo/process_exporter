@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"unicode/utf8"
 	"net/http"
 	"os"
 	"os/user"
@@ -360,6 +361,16 @@ func (e *Exporter) collect(ch chan<- prometheus.Metric) error {
 			continue
 		}
 		sCmdline := strings.Join(cmdline, " ")
+		// labels must be valid UTF8 strings
+		if !utf8.ValidString(sCmdline) {
+			utf8remap := func(r rune) rune {
+				if r == utf8.RuneError {
+					return -1
+				}
+				return r
+			}
+			sCmdline = strings.Map(utf8remap, sCmdline)
+		}
 
 		labels := []string{strconv.Itoa(proc.PID), stat.Comm, stat.State, sCmdline, strconv.Itoa(int(uid)),username}
 
