@@ -345,7 +345,7 @@ func (e *Exporter) collect(ch chan<- prometheus.Metric) error {
 
 		stat, err := proc.NewStat()
 		if err != nil {
-			log.Info(err)
+			//log.Info(err)
 			continue
 		}
 
@@ -357,7 +357,7 @@ func (e *Exporter) collect(ch chan<- prometheus.Metric) error {
 
 		cmdline, err := proc.CmdLine()
 		if err != nil {
-			log.Info(err)
+			//log.Info(err)
 			continue
 		}
 		sCmdline := strings.Join(cmdline, " ")
